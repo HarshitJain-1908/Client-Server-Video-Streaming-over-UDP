@@ -55,7 +55,8 @@ def process_frames():
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
-            client_socket.close()
+            cv2.destroyAllWindows()
+            # client_socket.close()
             break
 
 # Function to receive data and manage frames
@@ -70,6 +71,7 @@ def receive_data():
             latency_list.pop(0)
             latency_list.pop(len(latency_list)-1)
             x =  [i for i in range(1, len(latency_list) + 1)]
+            plt.switch_backend('Agg')  
             plt.figure(figsize=(20, 10))
             plt.scatter(x, latency_list)
             plt.xlabel('Frame Number')
@@ -120,18 +122,14 @@ def receive_data():
 receive_thread = threading.Thread(target=receive_data)
 receive_thread.start()
 
-# Create a thread for processing frames
-# processing_thread = threading.Thread(target=process_frames)
-# processing_thread.start()
+# Running processing_frames() on main thread.
 process_frames()
-receive_thread.join()
-# processing_thread.join()
 
-# while True:
-#     key = cv2.waitKey(1)  # Update the display
-#     if key == ord('q'):
-#         break
+# Waiting for the main receive_thread to finish and then close the socket.
+receive_thread.join()
+
 
 # Close the client socket when done.
 client_socket.close()
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()
+print("Successful Termination.")
