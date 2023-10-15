@@ -23,6 +23,8 @@ client_socket.sendto("Initial Message".encode(), server_addr_port)
 frame_data = b""
 sample_frame_size = 0
 expected_frame_size = 0
+frames_displayed = 0
+frames_sent = 0
 
 fps, st, frame_cnt, count = (0, 0, 20, 0)
 displays = 0
@@ -37,7 +39,7 @@ frame_queue = queue.Queue()
 
 # Function to process frames
 def process_frames():
-    global fps, st, count
+    global fps, st, count, frames_displayed
     while True:
         if not frame_queue.empty():
             complete_frame_data = frame_queue.get()
@@ -48,9 +50,8 @@ def process_frames():
                 continue
             
             if frame is not None:
-                # print("Displayed frame - ", displays)
                 frame = cv2.putText(frame, 'FPS: ' + str(fps), (10, 40), cv2.FONT_HERSHEY_DUPLEX, 0.7, (0, 0, 255), 2)
-                # frame = cv2.resize(frame, (1280, 720))  # Resize frames before displaying
+                frames_displayed += 1
                 cv2.imshow("RECEIVING AT CLIENT", frame)
 
         key = cv2.waitKey(1) & 0xFF
@@ -61,12 +62,13 @@ def process_frames():
 
 # Function to receive data and manage frames
 def receive_data():
-    global frame_data, expected_frame_size, displays, fps, st, count, chunks, num, timestamp, latency_list
+    global frame_data, expected_frame_size, displays, fps, st, count, chunks, num, timestamp, latency_list, frames_sent
     while True:
         packet, ret = client_socket.recvfrom(BUFFER_SIZE)
         # Checking for ending-frame:
         if(packet.startswith(b'@')):
-            print("Received All Video Frames")
+            frames_sent = (int)(packet.decode().split('@')[1])
+            # print("Received All Video Frames")
             # Plotting Network Latency
             latency_list.pop(0)
             latency_list.pop(len(latency_list)-1)
@@ -75,9 +77,9 @@ def receive_data():
             plt.figure(figsize=(20, 10))
             plt.scatter(x, latency_list)
             plt.xlabel('Frame Number')
-            plt.ylabel('Latency (in milliseconds)')
+            plt.ylabel('Network Latency (in milliseconds)')
             plt.savefig('plot.png')
-            print("SAVED IMAGE")
+            # print("SAVED IMAGE")
             break
 
         # Checking for video_frame initial packet.
@@ -132,4 +134,6 @@ receive_thread.join()
 # Close the client socket when done.
 client_socket.close()
 # cv2.destroyAllWindows()
-print("Successful Termination.")
+packet_loss = (frames_sent - frames_displayed)*100/(frames_sent)
+print("VIDEO FRAMES LOSS:", round(packet_loss,4), end =" %\n")
+print("Successfully Terminated Client Program.")

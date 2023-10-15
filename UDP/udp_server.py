@@ -7,7 +7,7 @@ import base64
 BUFF_SIZE = 1500
 # Method responsible ffor handling the client_connection.
 def handle_client(addr):
-    print('Client connected from:', addr)
+    # print('Client connected from:', addr)
 
     fps, st, frames_cnt, count = (0, 0, 20, 0)
     vid = cv2.VideoCapture("Rain.mp4")
@@ -81,12 +81,12 @@ def handle_client(addr):
     vid.release()
     
     # Sending end-frame to let the client know about it.
-    end_string = "@END"
+    end_string = "@" + str(display-1)
     server_socket.sendto(end_string.encode(), addr)
 
     # Logging connection termination event at server-side.
-    print('Client disconnected from:', addr)
     server_socket.close()
+    print('Successfully terminated connection with the client:', addr)
 
 
 # Creating the server socket
@@ -107,7 +107,7 @@ print("Listening for connections on", host_ip)
 # Accept a client connection --> Blocking Call
 data, addr = server_socket.recvfrom(1024)
 print('Connection from:', addr)
-print(data)
+# print(data)
 
 # Create a new thread to handle the client
 client_thread = threading.Thread(target=handle_client, args=(addr,))
