@@ -6,7 +6,7 @@ import base64
 
 BUFF_SIZE = 1500
 # Method responsible ffor handling the client_connection.
-def handle_client(client_socket, addr):
+def handle_client(addr):
     print('Client connected from:', addr)
 
     fps, st, frames_cnt, count = (0, 0, 20, 0)
@@ -23,8 +23,11 @@ def handle_client(client_socket, addr):
         if frame is None:
             print("Empty frame")
             continue
-
-        # Encoding the frame and obtaining a buffer out of it. (buffer contains the pixels of frame)
+        
+        # Fetching frame size. 
+        # print(frame.size)
+        
+        # Encoding the frame and obtaining a buffer out of it. (buffer contains byte-array -> pixel values)
         encoded, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
         # Calculate the size of the frame buffer.
         frame_size = len(buffer)
@@ -54,12 +57,12 @@ def handle_client(client_socket, addr):
         # Displaying the frame statistics at server side (for debugging purpose).
         # print("Frame -Time ", timestamp, "FRAME NUM - ", display ," ", frame_size, " SENT chunks - ", chunks)
         
+        # Adding fps statistics in addition to the frame being sent.
         frame = cv2.putText(frame, 'FPS: ' + str(fps), (10, 40), cv2.FONT_HERSHEY_DUPLEX, 0.7, (0, 0, 255), 2)
-        # print(frame.size)
 
         # Displaying the frame sent at server-side.
         cv2.imshow('Server Video', frame)
-        
+
         key = cv2.waitKey(1)  # Update the display
         if key == ord('q'):
             server_socket.close()
@@ -107,5 +110,5 @@ print('Connection from:', addr)
 print(data)
 
 # Create a new thread to handle the client
-client_thread = threading.Thread(target=handle_client, args=(server_socket, addr))
+client_thread = threading.Thread(target=handle_client, args=(addr,))
 client_thread.start()

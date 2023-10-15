@@ -5,24 +5,22 @@ import time
 import base64
 import threading
 import queue
+import matplotlib.pyplot as plt
 
-BUFFER_SIZE = 3000  # Increase buffer size
+BUFFER_SIZE = 2000  
 
-# Create a socket
+# Creating a socket for client. (UDP socket)
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Server address and port
-server_ip = "192.168.233.1"  # Replace with the server's IP address
-# server_ip = "192.168.74.1"  # Replace with the server's IP address
+# Defining server's address
+server_ip = "192.168.233.1"  
 server_port = 12345
 server_addr_port = (server_ip, server_port)
 
-message = "I'm a Client!!"
-encoded_mssg = str.encode(message)
-client_socket.sendto(encoded_mssg, server_addr_port)
+# Initiating the connection with server_socket
+client_socket.sendto("Initial Message".encode(), server_addr_port)
 
 frame_data = b""
-sample_frame_size_received = False
 sample_frame_size = 0
 expected_frame_size = 0
 
@@ -31,6 +29,8 @@ displays = 0
 chunks = 0
 num = 0
 timestamp = ""
+
+latency_list = [0]
 
 # Create a queue for frame data
 frame_queue = queue.Queue()
@@ -58,26 +58,39 @@ def process_frames():
             client_socket.close()
             break
 
-# Create a thread for processing frames
-processing_thread = threading.Thread(target=process_frames)
-processing_thread.start()
-
 # Function to receive data and manage frames
 def receive_data():
-    global frame_data, expected_frame_size, displays, fps, st, count, chunks, num, timestamp
+    global frame_data, expected_frame_size, displays, fps, st, count, chunks, num, timestamp, latency_list
     while True:
         packet, ret = client_socket.recvfrom(BUFFER_SIZE)
+        # Checking for ending-frame:
+        if(packet.startswith(b'@')):
+            print("Received All Video Frames")
+            # Plotting Network Latency
+            latency_list.pop(0)
+            latency_list.pop(len(latency_list)-1)
+            x =  [i for i in range(1, len(latency_list) + 1)]
+            plt.figure(figsize=(20, 10))
+            plt.scatter(x, latency_list)
+            plt.xlabel('Frame Number')
+            plt.ylabel('Latency (in milliseconds)')
+            plt.savefig('plot.png')
+            print("SAVED IMAGE")
+            break
         if packet.startswith(b'|'):
             # Parse the timestamp from the frame info
-            timestamp = packet[1:16].decode()
-            # displays += 1
+            timestamp = (float)(packet[1:16].decode())
+            idx = len(latency_list) - 1
+            val = (int)((timestamp - latency_list[idx])*1000)
+            # print("LATENCY:",val)
+            latency_list[idx] = val
+            latency_list.append(time.time())
             frame_size = int(packet[16:].decode())
             num = packet[:3].decode()
             expected_frame_size = frame_size
-            sample_frame_size_received = True
             frame_data = b""
             chunks = 0
-            print("Received frame at timestamp:", timestamp)
+            # print("Received frame at timestamp:", timestamp)
             continue
         else:
             data = base64.b64decode(packet)
@@ -86,7 +99,7 @@ def receive_data():
         
         if len(frame_data) >= expected_frame_size:
             displays += 1
-            print("Time - ", timestamp, "Curr-Time ", str(time.time()), " Frame NUM - ", displays, " chunks - ", chunks, " expec_frame_size - ", expected_frame_size, " frame_data - ", len(frame_data))
+            # print("Time - ", timestamp, "Curr-Time ", str(time.time()),"Frame NUM - ", displays, " chunks - ", chunks, " expec_frame_size - ", expected_frame_size, " frame_data - ", len(frame_data))
             if count == frame_cnt:
                 try:
                     fps = round(frame_cnt / (time.time() - st))
@@ -105,8 +118,13 @@ def receive_data():
 receive_thread = threading.Thread(target=receive_data)
 receive_thread.start()
 
+# Create a thread for processing frames
+processing_thread = threading.Thread(target=process_frames)
+processing_thread.start()
+
 while True:
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    key = cv2.waitKey(1)  # Update the display
+    if key == ord('q'):
         break
 
 # Close the client socket when done.
