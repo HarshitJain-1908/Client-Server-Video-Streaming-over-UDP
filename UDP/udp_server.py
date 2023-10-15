@@ -1,21 +1,19 @@
 import cv2
-import imutils
 import socket, time
 import threading
 import numpy as np
 import base64
 
 BUFF_SIZE = 1500
-# Function to handle a client connection
+# Method responsible ffor handling the client_connection.
 def handle_client(client_socket, addr):
     print('Client connected from:', addr)
 
-    # one = 0
     fps, st, frames_cnt, count = (0, 0, 20, 0)
-    # WIDTH = 400
     vid = cv2.VideoCapture("Rain.mp4")
     display = 0
-    while vid.isOpened(): # and display <= 5:
+    while vid.isOpened(): 
+
         ret, frame = vid.read()
         if not ret:
             # If the video is finished, break out of the loop
@@ -25,50 +23,43 @@ def handle_client(client_socket, addr):
         if frame is None:
             print("Empty frame")
             continue
-        # print("ACTUAL FRAME SIZE:", frame.size)
-        # frame = imutils.resize(frame, width=WIDTH)
+
+        # Encoding the frame and obtaining a buffer out of it. (buffer contains the pixels of frame)
         encoded, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
-        # print(encoded)    // True
-        # print("BUFFER\n", buffer) // a list of pixel values
-        # data = base64.b64encode(buffer)
-        # print("DATA LEN - ", len(buffer))
-        # Calculate the size of the frame
+        # Calculate the size of the frame buffer.
         frame_size = len(buffer)
         timestamp = "{:.4f}".format(time.time())
 
         # Convert the frame size to a string and prefix it with a delimiter (e.g., '|')
-        # frame_size_str = "|" + str(display) + str(frame_size)
-
         frame_size_str = "|" + timestamp + str(frame_size)
 
         # Send the frame size to the client before sending the frame data
         server_socket.sendto(frame_size_str.encode(), addr)
         
+        # Updating the frame_displayed_count.
         display += 1
-        # print("FRAME NUM - ", display ," ", frame_size)
-        # Split the data into smaller chunks (e.g., 1500 bytes each)
-        chunk_size = 1100
+
+        # Splitting the frame_buffer into smaller chunks (of size chunk_size)
+        chunk_size = 1500
+        # Initializing a variable to track number of chunks sent for the current frame.
         chunks = 0
- 
-        Set = set()
+
+        # Iterating the buffer and sending each chunk one after another.
         for i in range(0, len(buffer), chunk_size):
             chunks += 1
             chunk = buffer[i:i + chunk_size]
-            # chunk = str(chunks) + "|" + chunk.decode()
             encoded_chunk = base64.b64encode(chunk)
-            # print("Encoded chunk len - ", len(encoded_chunk))
-            Set.add(len(encoded_chunk))
             server_socket.sendto(encoded_chunk, addr)
 
-        print("Frame -Time ", timestamp, "FRAME NUM - ", display ," ", frame_size, " SENT chunks - ", chunks, " - ", Set)
+        # Displaying the frame statistics at server side (for debugging purpose).
+        # print("Frame -Time ", timestamp, "FRAME NUM - ", display ," ", frame_size, " SENT chunks - ", chunks)
         
         frame = cv2.putText(frame, 'FPS: ' + str(fps), (10, 40), cv2.FONT_HERSHEY_DUPLEX, 0.7, (0, 0, 255), 2)
         # print(frame.size)
-        # print(frame.size)
-        # frame = cv2.resize(frame, (640, 480))
 
-        # Display the frame on the server side
+        # Displaying the frame sent at server-side.
         cv2.imshow('Server Video', frame)
+        
         key = cv2.waitKey(1)  # Update the display
         if key == ord('q'):
             server_socket.close()
@@ -85,7 +76,14 @@ def handle_client(client_socket, addr):
 
     cv2.destroyAllWindows()
     vid.release()
+    
+    # Sending end-frame to let the client know about it.
+    end_string = "@END"
+    server_socket.sendto(end_string.encode(), addr)
+
+    # Logging connection termination event at server-side.
     print('Client disconnected from:', addr)
+    server_socket.close()
 
 
 # Creating the server socket
@@ -103,12 +101,11 @@ server_socket.bind(socket_address)
 # Listen for connections
 print("Listening for connections on", host_ip)
 
-while True:
-    # Accept a client connection
-    data, addr = server_socket.recvfrom(1024)
-    print('Connection from:', addr)
-    print(data)
+# Accept a client connection --> Blocking Call
+data, addr = server_socket.recvfrom(1024)
+print('Connection from:', addr)
+print(data)
 
-    # Create a new thread to handle the client
-    client_thread = threading.Thread(target=handle_client, args=(server_socket, addr))
-    client_thread.start()
+# Create a new thread to handle the client
+client_thread = threading.Thread(target=handle_client, args=(server_socket, addr))
+client_thread.start()
