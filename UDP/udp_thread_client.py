@@ -77,6 +77,8 @@ def receive_data():
             plt.savefig('plot.png')
             print("SAVED IMAGE")
             break
+
+        # Checking for video_frame initial packet.
         if packet.startswith(b'|'):
             # Parse the timestamp from the frame info
             timestamp = (float)(packet[1:16].decode())
@@ -119,13 +121,16 @@ receive_thread = threading.Thread(target=receive_data)
 receive_thread.start()
 
 # Create a thread for processing frames
-processing_thread = threading.Thread(target=process_frames)
-processing_thread.start()
+# processing_thread = threading.Thread(target=process_frames)
+# processing_thread.start()
+process_frames()
+receive_thread.join()
+# processing_thread.join()
 
-while True:
-    key = cv2.waitKey(1)  # Update the display
-    if key == ord('q'):
-        break
+# while True:
+#     key = cv2.waitKey(1)  # Update the display
+#     if key == ord('q'):
+#         break
 
 # Close the client socket when done.
 client_socket.close()
