@@ -10,8 +10,9 @@ def handle_client(addr):
     # print('Client connected from:', addr)
 
     fps, st, frames_cnt, count = (0, 0, 20, 0)
-    vid = cv2.VideoCapture("Rain.mp4")
     display = 0
+    vid = cv2.VideoCapture("Rain.mp4")
+
     while vid.isOpened(): 
 
         ret, frame = vid.read()
@@ -88,13 +89,12 @@ def handle_client(addr):
     server_socket.close()
     print('Successfully terminated connection with the client:', addr)
 
-
 # Creating the server socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, BUFF_SIZE)
 host_name = socket.gethostname()
 host_ip = "192.168.233.1"
-# host_ip = "192.168.74.1"
+# host_ip = "192.168.45.244"
 port = 12345
 socket_address = (host_ip, port)
 

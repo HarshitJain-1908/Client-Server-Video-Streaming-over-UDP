@@ -14,6 +14,7 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # Defining server's address
 server_ip = "192.168.233.1"  
+# server_ip = "192.168.46.182"  
 server_port = 12345
 server_addr_port = (server_ip, server_port)
 
@@ -87,10 +88,10 @@ def receive_data():
             # Parse the timestamp from the frame info
             timestamp = (float)(packet[1:16].decode())
             idx = len(latency_list) - 1
-            val = (int)((timestamp - latency_list[idx])*1000)
+            val = (int)((time.time() - latency_list[idx])*1000)
             # print("LATENCY:",val)
             latency_list[idx] = val
-            latency_list.append(time.time())
+            latency_list.append(timestamp)
             frame_size = int(packet[16:].decode())
             num = packet[:3].decode()
             expected_frame_size = frame_size
@@ -113,11 +114,8 @@ def receive_data():
                     count = 0
                 except:
                     pass
-                
             count += 1
-            
             frame_queue.put(frame_data)
-            
             frame_data = b""
 
 # Create a thread for receiving data.
@@ -134,6 +132,7 @@ receive_thread.join()
 # Close the client socket when done.
 client_socket.close()
 # cv2.destroyAllWindows()
-packet_loss = (frames_sent - frames_displayed)*100/(frames_sent)
+packet_loss = max(0, (frames_sent - frames_displayed)*100/(frames_sent))
 print("VIDEO FRAMES LOSS:", round(packet_loss,4), end =" %\n")
+print("AVERAGE LATENCY:", sum(latency_list)/len(latency_list))
 print("Successfully Terminated Client Program.")
